@@ -31,6 +31,8 @@ kotlin {
             implementation(libs.androidx.activity.compose)
             implementation(libs.koin.android)
             implementation(libs.koin.androidx.compose)
+            implementation(libs.mediapipe.tasks.vision)
+            implementation(libs.tensorflow.lite)
         }
         commonMain.dependencies {
             implementation(libs.compose.runtime)
