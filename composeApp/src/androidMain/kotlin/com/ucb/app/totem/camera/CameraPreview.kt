@@ -15,8 +15,10 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.*
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -72,6 +74,7 @@ fun CameraPreview(
     var detectedLetter by remember { mutableStateOf<String?>(null) }
     var detectedConfidence by remember { mutableFloatStateOf(0f) }
     var handDetected by remember { mutableStateOf(false) }
+    var handLandmarks by remember { mutableStateOf<List<com.google.mediapipe.tasks.components.containers.NormalizedLandmark>?>(null) }
 
     if (hasCameraPermission) {
         Box(modifier = modifier.clip(RoundedCornerShape(16.dp))) {
@@ -98,14 +101,24 @@ fun CameraPreview(
                             handDetected = detected
                             if (!detected) {
                                 detectedLetter = null
+                                handLandmarks = null
                             }
                         }
                     )
+
+                    val mainHandler = android.os.Handler(android.os.Looper.getMainLooper())
 
                     val handLandmarkerHelper = HandLandmarkerHelper(
                         context = ctx,
                         onResults = { result, image ->
                             recognitionEngine.processResult(result, image)
+                            mainHandler.post {
+                                handLandmarks = if (result.landmarks().isNotEmpty()) {
+                                    result.landmarks()[0]
+                                } else {
+                                    null
+                                }
+                            }
                         },
                         onError = { e ->
                             Log.e("CameraPreview", "MediaPipe error", e)
@@ -162,6 +175,59 @@ fun CameraPreview(
                 },
                 modifier = Modifier.fillMaxSize()
             )
+
+            // Canvas overlay to draw hand landmarks and connections
+            handLandmarks?.let { landmarks ->
+                Canvas(modifier = Modifier.fillMaxSize()) {
+                    // Draw bones (connections)
+                    HAND_CONNECTIONS.forEach { connection ->
+                        val startIdx = connection.first
+                        val endIdx = connection.second
+
+                        if (startIdx < landmarks.size && endIdx < landmarks.size) {
+                            val start = landmarks[startIdx]
+                            val end = landmarks[endIdx]
+
+                            val startPt = Offset(
+                                x = (1f - start.x()) * size.width,
+                                y = start.y() * size.height
+                            )
+                            val endPt = Offset(
+                                x = (1f - end.x()) * size.width,
+                                y = end.y() * size.height
+                            )
+
+                            drawLine(
+                                color = TotemColors.CyanNeon.copy(alpha = 0.8f),
+                                start = startPt,
+                                end = endPt,
+                                strokeWidth = 3.dp.toPx()
+                            )
+                        }
+                    }
+
+                    // Draw joints (knuckles/fingertips)
+                    landmarks.forEach { landmark ->
+                        val centerPt = Offset(
+                            x = (1f - landmark.x()) * size.width,
+                            y = landmark.y() * size.height
+                        )
+
+                        // Outer cyan glowing ring
+                        drawCircle(
+                            color = TotemColors.CyanNeon.copy(alpha = 0.4f),
+                            radius = 6.dp.toPx(),
+                            center = centerPt
+                        )
+                        // Inner solid white circle
+                        drawCircle(
+                            color = Color.White,
+                            radius = 3.dp.toPx(),
+                            center = centerPt
+                        )
+                    }
+                }
+            }
 
             // Overlay: Status indicator
             Column(
@@ -265,3 +331,12 @@ fun CameraPreview(
         }
     }
 }
+
+private val HAND_CONNECTIONS = listOf(
+    Pair(0, 1), Pair(1, 2), Pair(2, 3), Pair(3, 4), // Thumb
+    Pair(0, 5), Pair(5, 6), Pair(6, 7), Pair(7, 8), // Index
+    Pair(0, 9), Pair(9, 10), Pair(10, 11), Pair(11, 12), // Middle
+    Pair(0, 13), Pair(13, 14), Pair(14, 15), Pair(15, 16), // Ring
+    Pair(0, 17), Pair(17, 18), Pair(18, 19), Pair(19, 20), // Pinky
+    Pair(5, 9), Pair(9, 13), Pair(13, 17) // Palm knuckles
+)
