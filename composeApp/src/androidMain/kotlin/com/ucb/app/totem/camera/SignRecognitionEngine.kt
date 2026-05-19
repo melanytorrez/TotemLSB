@@ -22,15 +22,18 @@ class SignRecognitionEngine(
     private val motionHistory = ArrayDeque<Float>(SignClassifier.MOTION_HISTORY_SIZE)
     private val sequenceBuffer = mutableListOf<FloatArray>()
 
+    // Majority voting buffer for static gestures
+    private val staticPredictionBuffer = mutableListOf<String>()
+    private val VOTING_BUFFER_SIZE = 10
+    private val REQUIRED_VOTE_COUNT = 7
+
     // Stabilization logic (mirrors app.py)
     private var lastDetectedLetter: String? = null
     private var lastDetectionTimeMs: Long = 0L
-    private var handInRoiStartTime: Long? = null
     private var lastHandSeenTime: Long = System.currentTimeMillis()
 
     companion object {
         private const val TAG = "SignRecognitionEngine"
-        private const val RECOGNITION_DELAY_MS = 1000L  // 1 second stabilization
         private const val LETTER_COOLDOWN_MS = 2000L    // 2 seconds between same letter
     }
 
@@ -43,7 +46,7 @@ class SignRecognitionEngine(
         if (result.landmarks().isEmpty()) {
             // No hand detected
             prevFeats = null
-            handInRoiStartTime = null
+            staticPredictionBuffer.clear()
             onHandPresenceChanged(false)
 
             // Reset last letter so a new gesture of the same letter can be detected
@@ -95,22 +98,32 @@ class SignRecognitionEngine(
                 }
             }
         } else {
-            // Static gesture — classify single frame with stabilization
+            // Static gesture — classify single frame with majority voting buffer
             sequenceBuffer.clear()
 
-            // Stabilization: require hand to be still for RECOGNITION_DELAY_MS
-            if (handInRoiStartTime == null) {
-                handInRoiStartTime = now
+            val prediction = classifier.classifyStatic(feats)
+            if (prediction != null) {
+                staticPredictionBuffer.add(prediction.first)
+            } else {
+                staticPredictionBuffer.add("None")
             }
 
-            val elapsed = now - (handInRoiStartTime ?: now)
-            if (elapsed >= RECOGNITION_DELAY_MS) {
-                val prediction = classifier.classifyStatic(feats)
-                if (prediction != null) {
-                    handlePrediction(prediction.first, prediction.second, isMoving = false, now)
-                }
-                // Reset stabilization timer after recognition
-                handInRoiStartTime = null
+            if (staticPredictionBuffer.size > VOTING_BUFFER_SIZE) {
+                staticPredictionBuffer.removeAt(0)
+            }
+
+            // Check if any letter has at least REQUIRED_VOTE_COUNT in the buffer
+            val letterCounts = staticPredictionBuffer
+                .filter { it != "None" }
+                .groupingBy { it }
+                .eachCount()
+
+            val bestMatch = letterCounts.maxByOrNull { it.value }
+            if (bestMatch != null && bestMatch.value >= REQUIRED_VOTE_COUNT) {
+                val matchedLetter = bestMatch.key
+                val confidence = prediction?.second ?: SignClassifier.CONFIDENCE_THRESHOLD
+                handlePrediction(matchedLetter, confidence, isMoving = false, now)
+                staticPredictionBuffer.clear() // Clear to prevent immediate double-triggering
             }
         }
     }
@@ -132,8 +145,8 @@ class SignRecognitionEngine(
         prevFeats = null
         motionHistory.clear()
         sequenceBuffer.clear()
+        staticPredictionBuffer.clear()
         lastDetectedLetter = null
         lastDetectionTimeMs = 0L
-        handInRoiStartTime = null
     }
 }

@@ -143,17 +143,32 @@ fun CameraPreview(
                             .setOutputImageFormat(ImageAnalysis.OUTPUT_IMAGE_FORMAT_RGBA_8888)
                             .build()
                             .also { analysis ->
-                                analysis.setAnalyzer(executor) { imageProxy ->
-                                    val bitmap = imageProxy.toBitmap()
-                                    val mpImage = BitmapImageBuilder(bitmap).build()
+                                    analysis.setAnalyzer(executor) { imageProxy ->
+                                        val bitmap = imageProxy.toBitmap()
+                                        val rotationDegrees = imageProxy.imageInfo.rotationDegrees
+                                        
+                                        val rotatedBitmap = if (rotationDegrees != 0) {
+                                            val matrix = android.graphics.Matrix().apply {
+                                                postRotate(rotationDegrees.toFloat())
+                                            }
+                                            val rotated = android.graphics.Bitmap.createBitmap(
+                                                bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true
+                                            )
+                                            bitmap.recycle() // Free memory immediately
+                                            rotated
+                                        } else {
+                                            bitmap
+                                        }
 
-                                    handLandmarkerHelper.detectAsync(
-                                        mpImage,
-                                        imageProxy.imageInfo.timestamp / 1_000_000
-                                    )
+                                        val mpImage = BitmapImageBuilder(rotatedBitmap).build()
 
-                                    imageProxy.close()
-                                }
+                                        handLandmarkerHelper.detectAsync(
+                                            mpImage,
+                                            imageProxy.imageInfo.timestamp / 1_000_000
+                                        )
+
+                                        imageProxy.close()
+                                    }
                             }
 
                         val cameraSelector = CameraSelector.DEFAULT_FRONT_CAMERA

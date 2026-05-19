@@ -34,7 +34,7 @@ class SignClassifier(private val context: Context) {
         const val MOTION_THRESHOLD = 0.15f
         const val MOTION_HISTORY_SIZE = 15
         const val MOTION_MOVING_COUNT = 8
-        const val CONFIDENCE_THRESHOLD = 0.55f
+        const val CONFIDENCE_THRESHOLD = 0.80f
     }
 
     fun initialize() {
