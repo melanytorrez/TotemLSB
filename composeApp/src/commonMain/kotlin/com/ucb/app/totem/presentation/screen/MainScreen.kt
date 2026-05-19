@@ -12,8 +12,10 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -33,12 +35,14 @@ fun MainScreen(
     uiState: TotemUiState,
     letters: List<String>,
     onLetterClick: (String) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    cameraContent: (@Composable (Modifier) -> Unit)? = null
 ) {
     Column(
         modifier = modifier
             .fillMaxSize()
             .background(TotemColors.DarkNavy)
+            .verticalScroll(rememberScrollState())
             .padding(horizontal = 24.dp, vertical = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -48,7 +52,17 @@ fun MainScreen(
         Spacer(modifier = Modifier.height(20.dp))
 
         // --- Camera Area ---
-        CameraPreviewArea(uiState = uiState)
+        if (cameraContent != null) {
+            // Real camera from Android
+            cameraContent(
+                Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(4f / 3f)
+            )
+        } else {
+            // Placeholder camera
+            CameraPreviewArea(uiState = uiState)
+        }
 
         Spacer(modifier = Modifier.height(16.dp))
 
@@ -87,14 +101,6 @@ fun MainScreen(
         )
 
         Spacer(modifier = Modifier.height(8.dp))
-
-        // --- Footer ---
-        Text(
-            text = "Detección automática en señas (próximamente)...",
-            color = TotemColors.TextMuted,
-            fontSize = 10.sp,
-            textAlign = TextAlign.Center
-        )
     }
 }
 
@@ -153,7 +159,7 @@ private fun TotemHeader() {
     }
 }
 
-// --- Camera Preview Area ---
+// --- Camera Preview Area (Placeholder) ---
 @Composable
 private fun CameraPreviewArea(uiState: TotemUiState) {
     val isDetecting = uiState is TotemUiState.Detecting
@@ -267,7 +273,9 @@ private fun LetterButtonsGrid(
         columns = GridCells.Adaptive(minSize = 56.dp),
         horizontalArrangement = Arrangement.spacedBy(10.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(max = 200.dp)
     ) {
         items(letters) { letter ->
             LetterButton(

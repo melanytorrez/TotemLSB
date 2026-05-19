@@ -16,6 +16,8 @@ material3 = "1.10.0-alpha05"
 koin = "4.1.1"
 mediapipe = "0.10.14"
 tensorflow-lite = "2.16.1"
+camerax = "1.4.2"
+json = "20240303"
 
 
 [libraries]
@@ -44,6 +46,11 @@ koin-compose = { module = "io.insert-koin:koin-compose" , version.ref = "koin"}
 koin-compose-viewmodel = { module = "io.insert-koin:koin-compose-viewmodel" , version.ref = "koin"}
 mediapipe-tasks-vision = { module = "com.google.mediapipe:tasks-vision", version.ref = "mediapipe" }
 tensorflow-lite = { module = "org.tensorflow:tensorflow-lite", version.ref = "tensorflow-lite" }
+camerax-core = { module = "androidx.camera:camera-core", version.ref = "camerax" }
+camerax-camera2 = { module = "androidx.camera:camera-camera2", version.ref = "camerax" }
+camerax-lifecycle = { module = "androidx.camera:camera-lifecycle", version.ref = "camerax" }
+camerax-view = { module = "androidx.camera:camera-view", version.ref = "camerax" }
+json = { module = "org.json:json", version.ref = "json" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }

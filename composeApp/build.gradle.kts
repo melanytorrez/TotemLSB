@@ -33,6 +33,11 @@ kotlin {
             implementation(libs.koin.androidx.compose)
             implementation(libs.mediapipe.tasks.vision)
             implementation(libs.tensorflow.lite)
+            implementation(libs.camerax.core)
+            implementation(libs.camerax.camera2)
+            implementation(libs.camerax.lifecycle)
+            implementation(libs.camerax.view)
+            implementation(libs.json)
         }
         commonMain.dependencies {
             implementation(libs.compose.runtime)
@@ -65,6 +70,9 @@ android {
         targetSdk = libs.versions.android.targetSdk.get().toInt()
         versionCode = 1
         versionName = "1.0"
+    }
+    androidResources {
+        noCompress("tflite", "task")
     }
     packaging {
         resources {

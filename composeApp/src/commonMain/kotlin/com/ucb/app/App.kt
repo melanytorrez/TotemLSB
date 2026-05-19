@@ -17,7 +17,9 @@ import com.ucb.app.totem.presentation.viewmodel.TotemViewModel
 import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
-fun App() {
+fun App(
+    cameraContent: (@Composable (Modifier, (String) -> Unit) -> Unit)? = null
+) {
     val viewModel: TotemViewModel = koinViewModel()
     val uiState by viewModel.uiState.collectAsState()
 
@@ -54,7 +56,14 @@ fun App() {
                     MainScreen(
                         uiState = state,
                         letters = viewModel.getAllLetters(),
-                        onLetterClick = { viewModel.simulateDetection(it) }
+                        onLetterClick = { viewModel.simulateDetection(it) },
+                        cameraContent = if (cameraContent != null) {
+                            { mod ->
+                                cameraContent(mod) { letter ->
+                                    viewModel.onRealDetection(letter)
+                                }
+                            }
+                        } else null
                     )
                 }
                 is TotemUiState.Success -> {
